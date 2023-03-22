@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"log"
+	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -27,13 +27,32 @@ type OneLoginConf struct {
 	AccountName  string `yaml:"onelogin-account"`
 }
 type Account struct {
-	Name            string `yaml:"name"`
-	AppID           string `yaml:"appID"`
-	AccountID       string `yaml:"accountID"`
-	ProfileName     string `yaml:"profileName"`
-	DurationSeconds int64  `yaml:"durationSeconds"`
+	Name            string            `yaml:"name"`
+	AppID           string            `yaml:"appID"`
+	AppIDsByRole    map[string]string `yaml:"appIDsByRole"`
+	AccountID       string            `yaml:"accountID"`
+	ProfileName     string            `yaml:"profileName"`
+	DurationSeconds int64             `yaml:"durationSeconds"`
 }
 
+func getAccountNames(accounts []Account) []string {
+	var accountsName []string
+	for _, v := range accounts {
+		accountsName = append(accountsName, v.Name)
+	}
+	return accountsName
+}
+
+func (a *Account) GetAppID(role string) string {
+	if a.AppIDsByRole != nil {
+		if appID, ok := a.AppIDsByRole[role]; ok {
+			return appID
+		}
+	}
+	return a.AppID
+}
+
+var version string
 var config Config
 
 // rootCmd represents the base command when called without any subcommands
@@ -42,22 +61,23 @@ var rootCmd = &cobra.Command{
 	Short: "OneLogin authentication CLI",
 }
 
+func SetVersion(v string) {
+	version = v
+}
+
 func Execute() {
 	cobra.CheckErr(rootCmd.Execute())
 }
 
-func init() {
-	var err error
-	config, err = LoadConfig("./")
-	if err != nil {
-		log.Fatalln(err)
+func LoadConfig(path string) (err error) {
+	userDefinedConfigFile := os.Getenv("ONELOGIN_AUTH_CLI_CONFIG_FILE")
+	if userDefinedConfigFile != "" {
+		viper.SetConfigFile(userDefinedConfigFile)
+	} else {
+		viper.AddConfigPath(path)
+		viper.SetConfigName("config")
+		viper.SetConfigType("yaml")
 	}
-}
-
-func LoadConfig(path string) (config Config, err error) {
-	viper.AddConfigPath(path)
-	viper.SetConfigName("config")
-	viper.SetConfigType("yaml")
 
 	viper.AutomaticEnv()
 

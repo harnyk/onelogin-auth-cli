@@ -35,9 +35,21 @@ type User struct {
 	ID        int    `json:"id"`
 }
 
+type HttpClient interface {
+	Do(*http.Request) (*http.Response, error)
+}
+
 const SAMLAssertionURl = OneLoginAPIURL + "api/2/saml_assertion"
 
-func SAMLAssertion(token, login, password, appID, oneloginDomain string) (*SAMLAssertionResponse, error) {
+func GetDeviceTypes(devices []Device) []string {
+	deviceTypes := []string{}
+	for _, v := range devices {
+		deviceTypes = append(deviceTypes, v.DeviceType)
+	}
+	return deviceTypes
+}
+
+func (o Client) SAMLAssertion(client HttpClient, token, login, password, appID, oneloginDomain string) (*SAMLAssertionResponse, error) {
 
 	newBody := SAMLAssertionBody{
 		UsernameOrEmail: login,
@@ -56,7 +68,6 @@ func SAMLAssertion(token, login, password, appID, oneloginDomain string) (*SAMLA
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "bearer:"+token)
-	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
